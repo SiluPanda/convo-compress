@@ -320,7 +320,7 @@ This file tracks all implementation tasks derived from [SPEC.md](./SPEC.md). Tas
 - [ ] **Test onMerge does not fire on first compression** — First eviction skips merge; verify `onMerge` is not called. | Status: not_done
 - [x] **Test onError fires on summarizer failure** — Verify `onError` receives the error and failed messages. | Status: done
 - [ ] **Test hook error does not crash pipeline** — Provide a hook that throws. Verify compression completes successfully despite the hook error. | Status: not_done
-- [ ] **Test hooks not called when not provided** — Create compressor without hooks. Trigger compression. Verify no errors (no attempt to call undefined hooks). | Status: not_done
+- [x] **Test hooks not called when not provided** — Create compressor without hooks. Trigger compression. Verify no errors (no attempt to call undefined hooks). | Status: done
 
 ---
 
@@ -335,7 +335,7 @@ This file tracks all implementation tasks derived from [SPEC.md](./SPEC.md). Tas
 ## Phase 26: Edge Case Tests
 
 - [ ] **Test empty conversation** — `getCompressed()` returns `{ summary: null, recentMessages: [] }`. `getMessages()` returns `[]`. Stats are all zeros. | Status: not_done
-- [ ] **Test single message** — Add one message. No eviction. `getCompressed()` returns it in `recentMessages`. | Status: not_done
+- [x] **Test single message** — Add one message. No eviction. `getCompressed()` returns it in `recentMessages`. | Status: done
 - [ ] **Test message exceeding entire threshold** — Add one message whose token count exceeds the token eviction threshold. Verify eviction triggers immediately and the summarizer is called with just that message. | Status: not_done
 - [x] **Test compress with evictCount: 0** — Call `compress({ evictCount: 0 })`. Verify no eviction occurs and no summarizer call. | Status: done
 - [ ] **Test addMessages with empty array** — Call `addMessages([])`. Verify no error and no state change. | Status: not_done
