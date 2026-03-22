@@ -3,6 +3,7 @@
 Incremental sliding-window chat compressor with rolling summaries.
 
 [![npm version](https://img.shields.io/npm/v/convo-compress.svg)](https://www.npmjs.com/package/convo-compress)
+[![npm downloads](https://img.shields.io/npm/dt/convo-compress.svg)](https://www.npmjs.com/package/convo-compress)
 [![license](https://img.shields.io/npm/l/convo-compress.svg)](https://github.com/SiluPanda/convo-compress/blob/master/LICENSE)
 [![node](https://img.shields.io/node/v/convo-compress.svg)](https://www.npmjs.com/package/convo-compress)
 
