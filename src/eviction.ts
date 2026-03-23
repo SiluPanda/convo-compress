@@ -46,7 +46,7 @@ export function getEvictionCount(
 
   if (eviction.trigger === 'messages') {
     const count = messages.length - eviction.target;
-    return Math.max(1, count);
+    return Math.max(0, count);
   }
 
   if (eviction.trigger === 'tokens') {
@@ -57,14 +57,14 @@ export function getEvictionCount(
       running -= countMessageTokens(messages[evictCount], counter, overhead);
       evictCount++;
     }
-    return Math.max(1, evictCount);
+    return Math.max(0, evictCount);
   }
 
   if (eviction.trigger === 'combined') {
     // Compute based on whichever threshold was exceeded, use the one that needs more evictions
     let countByMessages = 0;
     if (messages.length >= eviction.messageThreshold) {
-      countByMessages = Math.max(1, messages.length - eviction.messageTarget);
+      countByMessages = Math.max(0, messages.length - eviction.messageTarget);
     }
 
     let countByTokens = 0;
@@ -75,7 +75,6 @@ export function getEvictionCount(
         running -= countMessageTokens(messages[countByTokens], counter, overhead);
         countByTokens++;
       }
-      countByTokens = Math.max(1, countByTokens);
     }
 
     return Math.max(countByMessages, countByTokens);

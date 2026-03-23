@@ -8,7 +8,7 @@ export function countMessageTokens(
   counter: TokenCounter,
   overhead: number
 ): number {
-  let tokens = counter(msg.content);
+  let tokens = counter(msg.content ?? '');
   if (msg.tool_calls && msg.tool_calls.length > 0) {
     tokens += counter(JSON.stringify(msg.tool_calls));
   }

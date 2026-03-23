@@ -291,7 +291,9 @@ describe('getStats()', () => {
     expect(stats.messagesCompressed).toBe(2);
     expect(stats.messagesInWindow).toBe(1);
     expect(stats.summarizationCalls).toBe(1);
-    expect(stats.compressionRatio).toBeCloseTo(2 / 3);
+    // compressionRatio = totalInputTokens / (summaryTokens + windowTokens)
+    // 3 msgs * 5 tokens each = 15 input; summary "Summary: a; b" = ceil(14/4)=4; window "c" = 5
+    expect(stats.compressionRatio).toBeCloseTo(15 / 9);
   });
 
   it('tracks totalInputTokens', () => {
@@ -396,6 +398,79 @@ describe('resetStats()', () => {
     expect(stats.messagesCompressed).toBe(0);
     expect(stats.summarizationCalls).toBe(0);
     expect(stats.compressionRatio).toBe(0);
+  });
+});
+
+describe('null content handling', () => {
+  it('does not crash when message content is null', () => {
+    const c = createCompressor({
+      summarizer: mockSummarizer,
+      eviction: { trigger: 'manual' },
+      tokenCounter: (t) => t.length,
+      messageOverhead: 0,
+    });
+    // Simulate assistant message with null content (common with tool_calls-only messages)
+    const msg = { role: 'assistant' as const, content: null as unknown as string, tool_calls: [{ id: 'tc1', type: 'function' as const, function: { name: 'fn', arguments: '{}' } }] };
+    c.addMessage(msg);
+    const stats = c.getStats();
+    expect(stats.totalMessages).toBe(1);
+    expect(stats.totalInputTokens).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('eviction count below target', () => {
+  it('returns 0 when message count is below target (no spurious eviction)', async () => {
+    const summarizer = vi.fn(mockSummarizer);
+    const c = createCompressor({
+      summarizer,
+      eviction: { trigger: 'messages', threshold: 10, target: 8 },
+      mergeStrategy: 'replace',
+    });
+    c.addMessages([makeMsg('user', 'a'), makeMsg('assistant', 'b')]);
+    // Directly calling compress() should NOT evict when below threshold
+    await c.compress();
+    expect(summarizer).not.toHaveBeenCalled();
+    expect(c.getStats().messagesInWindow).toBe(2);
+  });
+
+  it('returns 0 for token trigger when below target', async () => {
+    const summarizer = vi.fn(mockSummarizer);
+    const c = createCompressor({
+      summarizer,
+      eviction: { trigger: 'tokens', threshold: 10000, target: 8000 },
+      mergeStrategy: 'replace',
+    });
+    c.addMessage(makeMsg('user', 'hi'));
+    await c.compress();
+    expect(summarizer).not.toHaveBeenCalled();
+  });
+});
+
+describe('mergeSummaries error recovery', () => {
+  it('restores messages when merge fails', async () => {
+    let callCount = 0;
+    const failOnMerge: SummarizerFn = async (msgs) => {
+      callCount++;
+      if (callCount >= 2) throw new Error('merge fail');
+      return 'Summary: ' + msgs.map(m => m.content).join('; ');
+    };
+    const onError = vi.fn();
+    const c = createCompressor({
+      summarizer: failOnMerge,
+      eviction: { trigger: 'manual' },
+      mergeStrategy: 'summarize', // will call summarizer again for merge
+      hooks: { onError },
+    });
+    // First compress succeeds
+    c.addMessages([makeMsg('user', 'a'), makeMsg('assistant', 'b')]);
+    await c.compress({ evictCount: 2 });
+
+    // Second compress: summarizer succeeds but merge calls summarizer again → fails
+    c.addMessages([makeMsg('user', 'c'), makeMsg('assistant', 'd')]);
+    await expect(c.compress({ evictCount: 2 })).rejects.toThrow('merge fail');
+    expect(onError).toHaveBeenCalled();
+    // Messages should be restored
+    expect(c.getStats().messagesInWindow).toBe(2);
   });
 });
 
