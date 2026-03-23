@@ -51,8 +51,10 @@ export function createCompressor(options: CompressorOptions, restore?: RestoreSt
     stats.messagesInWindow = recentMessages.length;
     stats.windowTokens = computeWindowTokens();
     stats.summaryTokens = summary ? counter(summary) : 0;
-    stats.compressionRatio =
-      stats.messagesCompressed / Math.max(1, stats.totalMessages);
+    const compressedTokens = stats.summaryTokens + stats.windowTokens;
+    stats.compressionRatio = compressedTokens > 0
+      ? stats.totalInputTokens / compressedTokens
+      : 0;
   }
 
   function addMessage(message: Message): void {
@@ -110,6 +112,11 @@ export function createCompressor(options: CompressorOptions, restore?: RestoreSt
         targetTokens: maxSummaryTokens,
       });
       stats.summarizationCalls++;
+
+      summary = await mergeSummaries(summary, newSummary, mergeStrategy, {
+        summarizer: options.summarizer,
+        customMerge: options.customMerge,
+      });
     } catch (err) {
       // Restore evicted messages on error
       recentMessages = [...toEvict, ...recentMessages];
@@ -118,11 +125,6 @@ export function createCompressor(options: CompressorOptions, restore?: RestoreSt
       }
       throw err;
     }
-
-    summary = await mergeSummaries(summary, newSummary, mergeStrategy, {
-      summarizer: options.summarizer,
-      customMerge: options.customMerge,
-    });
 
     stats.messagesCompressed += toEvict.length;
     stats.summaryTokens = counter(summary);
